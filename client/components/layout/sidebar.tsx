@@ -100,13 +100,13 @@ export function Sidebar({ userRole }: SidebarProps) {
             <div className="p-4 border-b border-sidebar-border">
               <div className="flex items-center space-x-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback>
+                  <AvatarImage src={user.avatar || "/placeholder.svg"}  />
+                  {/* <AvatarFallback>
                     {user.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")}
-                  </AvatarFallback>
+                  </AvatarFallback> */}
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>

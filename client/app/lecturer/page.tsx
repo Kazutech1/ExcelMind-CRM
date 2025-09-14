@@ -1,8 +1,24 @@
+"use client"
+
+
+import { useState } from "react";
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { BookOpen, Users, ClipboardList, Award, Plus, Upload } from "lucide-react"
 
 const mockActivities = [
@@ -37,6 +53,39 @@ const mockActivities = [
 ]
 
 export default function LecturerDashboard() {
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [courseData, setCourseData] = useState({
+    title: "",
+    code: "",
+    description: "",
+    syllabus: null as File | null,
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCourseData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setCourseData(prev => ({ ...prev, syllabus: e.target.files![0] }));
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Here you would typically handle the course upload
+    console.log("Course data:", courseData);
+    // Reset form and close dialog
+    setCourseData({
+      title: "",
+      code: "",
+      description: "",
+      syllabus: null,
+    });
+    setIsUploadDialogOpen(false);
+  };
+
   return (
     <ProtectedRoute allowedRoles={["LECTURER"]}>
       <div className="space-y-6">
@@ -47,10 +96,80 @@ export default function LecturerDashboard() {
             <p className="text-muted-foreground">Manage your courses and students</p>
           </div>
           <div className="flex space-x-2">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Course
-            </Button>
+            <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Course
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Create New Course</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details below to create a new course. Click save when you're done.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="title" className="text-right">
+                        Title
+                      </Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        value={courseData.title}
+                        onChange={handleInputChange}
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="code" className="text-right">
+                        Code
+                      </Label>
+                      <Input
+                        id="code"
+                        name="code"
+                        value={courseData.code}
+                        onChange={handleInputChange}
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="description" className="text-right">
+                        Description
+                      </Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        value={courseData.description}
+                        onChange={handleInputChange}
+                        className="col-span-3"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="syllabus" className="text-right">
+                        Syllabus
+                      </Label>
+                      <Input
+                        id="syllabus"
+                        type="file"
+                        onChange={handleFileChange}
+                        className="col-span-3"
+                        accept=".pdf,.doc,.docx"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit">Create Course</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
             <Button variant="outline">
               <Upload className="h-4 w-4 mr-2" />
               Upload Syllabus
@@ -58,6 +177,7 @@ export default function LecturerDashboard() {
           </div>
         </div>
 
+        {/* Rest of the dashboard content remains the same */}
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard title="My Courses" value="6" description="Active courses" icon={BookOpen} />

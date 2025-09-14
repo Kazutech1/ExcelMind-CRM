@@ -1,3 +1,8 @@
+"use client"
+
+
+
+import { useState, useEffect } from "react";
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { CourseCard } from "@/components/courses/course-card"
 import { CreateCourseDialog } from "@/components/courses/create-course-dialog"
@@ -6,14 +11,50 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { mockCourses } from "@/lib/mock-data"
 import { Search, Filter, Plus } from "lucide-react"
+import { useAuth } from "@/hooks/useAuth" // Assuming you have an auth hook
 
 export default function LecturerCoursesPage() {
-  // Filter courses for current lecturer (mock data shows lecturer ID 2)
-  const lecturerCourses = mockCourses.filter((course) => course.lecturer.id === "2")
+  const { user } = useAuth(); // Get current user from auth context
+  const [lecturerCourses, setLecturerCourses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch lecturer's courses from API
+    const fetchLecturerCourses = async () => {
+      try {
+        setIsLoading(true);
+        // In a real app, you would fetch from your API
+        // const response = await fetch(`/api/courses/lecturer/${user.id}`);
+        // const data = await response.json();
+        
+        // For mock data, filter by lecturer ID
+        const filteredCourses = mockCourses.filter((course) => course.lecturer.id === user.id);
+        setLecturerCourses(filteredCourses);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user?.id) {
+      fetchLecturerCourses();
+    }
+  }, [user]);
 
   const handleManageCourse = (courseId: string) => {
-    console.log("Managing course:", courseId)
+    console.log("Managing course:", courseId);
     // Navigate to course management page
+  }
+
+  if (isLoading) {
+    return (
+      <ProtectedRoute allowedRoles={["LECTURER"]}>
+        <div className="flex items-center justify-center h-64">
+          <p>Loading courses...</p>
+        </div>
+      </ProtectedRoute>
+    );
   }
 
   return (

@@ -4,87 +4,130 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import type { Enrollment, Course } from "@/lib/types"
-import { Clock, User, BookOpen, Calendar, Check, X, Trash2 } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Users, BookOpen, Calendar, UserX } from "lucide-react"
+
+interface Course {
+  id: string
+  title: string
+  credits: number
+  syllabus?: string
+  lecturer?: {
+    id: string
+    email: string
+  }
+}
+
+interface Enrollment {
+  id: string
+  courseId: string
+  studentId: string
+  status: 'PENDING' | 'ENROLLED' | 'COMPLETED' | 'DROPPED' | 'REJECTED'
+  createdAt: string
+  updatedAt: string
+  course?: Course
+}
 
 interface EnrollmentCardProps {
   enrollment: Enrollment
-  course: Course
-  student?: {
-    id: string
-    name: string
-    email: string
-    avatar?: string
-  }
-  showActions?: boolean
-  onApprove?: (enrollmentId: string) => void
-  onReject?: (enrollmentId: string) => void
-  onDrop?: (enrollmentId: string) => void
+  course?: Course
+  onDrop: () => void
 }
 
 export function EnrollmentCard({
   enrollment,
   course,
-  student,
-  showActions = false,
-  onApprove,
-  onReject,
   onDrop,
 }: EnrollmentCardProps) {
+  // Use course from enrollment if not provided directly
+  const courseData = course || enrollment.course
+
+  if (!courseData) {
+    return (
+      <Card className="h-full">
+        <CardContent className="flex items-center justify-center h-32">
+          <p className="text-muted-foreground">Course data not available</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "approved":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
-      case "rejected":
-        return "bg-red-100 text-red-800 border-red-200"
-      case "dropped":
-        return "bg-gray-100 text-gray-800 border-gray-200"
+      case 'ENROLLED':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'COMPLETED':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'DROPPED':
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800 border-red-200'
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'ENROLLED':
+        return 'Enrolled'
+      case 'PENDING':
+        return 'Pending Approval'
+      case 'COMPLETED':
+        return 'Completed'
+      case 'DROPPED':
+        return 'Dropped'
+      case 'REJECTED':
+        return 'Rejected'
+      default:
+        return status
     }
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     })
   }
 
+  const canDrop = enrollment.status === 'ENROLLED' || enrollment.status === 'PENDING'
+
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg font-semibold">{course.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">{course.code}</p>
+          <div className="space-y-1 flex-1">
+            <CardTitle className="text-lg font-semibold">{courseData.title}</CardTitle>
+            <Badge 
+              variant="outline" 
+              className={`text-xs ${getStatusColor(enrollment.status)}`}
+            >
+              {getStatusText(enrollment.status)}
+            </Badge>
           </div>
-          <Badge className={getStatusColor(enrollment.status)}>
-            {enrollment.status.charAt(0).toUpperCase() + enrollment.status.slice(1)}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Student Info (for admin view) */}
-        {student && (
-          <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+        {/* Course Description */}
+        {courseData.syllabus && (
+          <p className="text-sm text-foreground line-clamp-3">{courseData.syllabus}</p>
+        )}
+
+        {/* Lecturer Info */}
+        {courseData.lecturer && (
+          <div className="flex items-center space-x-3">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={student.avatar || "/placeholder.svg"} alt={student.name} />
               <AvatarFallback>
-                {student.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
+                {courseData.lecturer.email.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-sm font-medium text-foreground">{student.name}</p>
-              <p className="text-xs text-muted-foreground">{student.email}</p>
+              <p className="text-sm font-medium text-foreground">{courseData.lecturer.email}</p>
+              <p className="text-xs text-muted-foreground">Instructor</p>
             </div>
           </div>
         )}
@@ -92,55 +135,63 @@ export function EnrollmentCard({
         {/* Course Details */}
         <div className="space-y-2">
           <div className="flex items-center text-sm text-muted-foreground">
-            <User className="h-4 w-4 mr-2" />
-            <span>{course.lecturer.name}</span>
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="h-4 w-4 mr-2" />
-            <span>
-              {course.schedule.days.join(", ")} • {course.schedule.time}
-            </span>
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
             <BookOpen className="h-4 w-4 mr-2" />
-            <span>{course.credits} credits</span>
+            <span>{courseData.credits} credits</span>
           </div>
-        </div>
-
-        {/* Enrollment Timeline */}
-        <div className="space-y-2 text-xs text-muted-foreground">
-          <div className="flex items-center">
-            <Calendar className="h-3 w-3 mr-2" />
-            <span>Enrolled: {formatDate(enrollment.enrolledAt)}</span>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4 mr-2" />
+            <span>Enrolled {formatDate(enrollment.createdAt)}</span>
           </div>
-          {enrollment.approvedAt && (
-            <div className="flex items-center">
-              <Check className="h-3 w-3 mr-2" />
-              <span>Approved: {formatDate(enrollment.approvedAt)}</span>
-            </div>
-          )}
         </div>
 
         {/* Actions */}
-        {showActions && enrollment.status === "pending" && (
-          <div className="flex space-x-2 pt-2">
-            <Button size="sm" onClick={() => onApprove?.(enrollment.id)} className="flex-1">
-              <Check className="h-4 w-4 mr-1" />
-              Approve
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => onReject?.(enrollment.id)} className="flex-1">
-              <X className="h-4 w-4 mr-1" />
-              Reject
-            </Button>
+        {canDrop && (
+          <div className="pt-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="w-full" size="sm">
+                  <UserX className="h-4 w-4 mr-2" />
+                  {enrollment.status === 'PENDING' ? 'Cancel Request' : 'Drop Course'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {enrollment.status === 'PENDING' 
+                      ? 'Cancel Enrollment Request?' 
+                      : 'Drop from Course?'
+                    }
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {enrollment.status === 'PENDING' 
+                      ? `Are you sure you want to cancel your enrollment request for "${courseData.title}"? This action cannot be undone.`
+                      : `Are you sure you want to drop from "${courseData.title}"? This action cannot be undone and you may need to re-enroll if you want to take this course again.`
+                    }
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={onDrop}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {enrollment.status === 'PENDING' ? 'Cancel Request' : 'Drop Course'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
 
-        {/* Drop Course (for students) */}
-        {!showActions && enrollment.status === "approved" && (
-          <Button size="sm" variant="outline" onClick={() => onDrop?.(enrollment.id)} className="w-full">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Drop Course
-          </Button>
+        {/* Show message for non-droppable statuses */}
+        {!canDrop && (
+          <div className="pt-2">
+            <p className="text-xs text-muted-foreground text-center">
+              {enrollment.status === 'COMPLETED' && 'Course completed'}
+              {enrollment.status === 'DROPPED' && 'Course dropped'}
+              {enrollment.status === 'REJECTED' && 'Enrollment was rejected'}
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

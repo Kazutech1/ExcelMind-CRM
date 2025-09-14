@@ -60,68 +60,16 @@ export default function StudentDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 ">
           <StatsCard title="Enrolled Courses" value="5" description="This semester" icon={BookOpen} />
-          <StatsCard
-            title="Completed Courses"
-            value="12"
-            description="Total completed"
-            icon={GraduationCap}
-            trend={{ value: 20, isPositive: true }}
-          />
           <StatsCard title="Pending Assignments" value="8" description="Due this week" icon={ClipboardList} />
-          <StatsCard
-            title="Overall GPA"
-            value="3.7"
-            description="Current semester"
-            icon={Award}
-            trend={{ value: 2, isPositive: true }}
-          />
         </div>
 
         {/* Content Grid */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* Recent Activity */}
-          <RecentActivity activities={mockActivities} title="Recent Activity" />
 
-          {/* Course Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">Course Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-foreground">Data Structures</span>
-                    <span className="text-muted-foreground">85%</span>
-                  </div>
-                  <Progress value={85} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-foreground">Advanced Mathematics</span>
-                    <span className="text-muted-foreground">92%</span>
-                  </div>
-                  <Progress value={92} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-foreground">Computer Networks</span>
-                    <span className="text-muted-foreground">78%</span>
-                  </div>
-                  <Progress value={78} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-foreground">Physics Lab</span>
-                    <span className="text-muted-foreground">67%</span>
-                  </div>
-                  <Progress value={67} className="h-2" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        
         </div>
 
         {/* Upcoming Assignments */}
@@ -191,10 +139,6 @@ export default function StudentDashboard() {
               <Button variant="outline" className="h-20 flex-col bg-transparent">
                 <Award className="h-6 w-6 mb-2" />
                 <span className="text-xs">Grades</span>
-              </Button>
-              <Button variant="outline" className="h-20 flex-col bg-transparent">
-                <Calendar className="h-6 w-6 mb-2" />
-                <span className="text-xs">Schedule</span>
               </Button>
             </div>
           </CardContent>

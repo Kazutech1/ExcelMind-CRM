@@ -1,156 +1,159 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { EnrollmentCard } from "@/components/enrollments/enrollment-card"
-import { StatsCard } from "@/components/dashboard/stats-card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { mockEnrollments, mockCourses } from "@/lib/mock-data"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useCourses } from "@/hooks/useCourses"
 import { useToast } from "@/hooks/use-toast"
-import { Search, BookOpen, Clock, CheckCircle, XCircle } from "lucide-react"
+import { BookOpen, Filter } from "lucide-react"
 
 export default function StudentEnrolledPage() {
+  const { enrollments, isLoading, getStudentEnrollments, dropFromCourse } = useCourses()
   const { toast } = useToast()
+  const [statusFilter, setStatusFilter] = useState<string>("all")
 
-  // Filter enrollments for current student (mock student ID 3)
-  const studentEnrollments = mockEnrollments.filter((e) => e.studentId === "3")
-  const pendingEnrollments = studentEnrollments.filter((e) => e.status === "pending")
-  const approvedEnrollments = studentEnrollments.filter((e) => e.status === "approved")
-  const rejectedEnrollments = studentEnrollments.filter((e) => e.status === "rejected")
+  useEffect(() => {
+    getStudentEnrollments()
+  }, [getStudentEnrollments])
 
-  const handleDrop = (enrollmentId: string) => {
-    const enrollment = mockEnrollments.find((e) => e.id === enrollmentId)
-    const course = mockCourses.find((c) => c.id === enrollment?.courseId)
-
-    toast({
-      title: "Course dropped",
-      description: `You have been unenrolled from ${course?.title}`,
-      variant: "destructive",
-    })
+  const handleDrop = async (courseId: string) => {
+    try {
+      await dropFromCourse(courseId)
+      toast({
+        title: "Success",
+        description: "Successfully dropped from course",
+      })
+      // Refresh enrollments after dropping
+      getStudentEnrollments()
+    } catch (error) {
+      // Error is already handled in the hook
+      console.error('Drop failed:', error)
+    }
   }
 
-  const getEnrollmentWithCourse = (enrollment: any) => {
-    const course = mockCourses.find((c) => c.id === enrollment.courseId)
-    return { enrollment, course }
-  }
+  // Filter enrollments based on status
+  const filteredEnrollments = enrollments?.filter(enrollment => {
+    if (statusFilter === "all") return true
+    return enrollment.status === statusFilter
+  }) || []
+
+  // Get enrollment counts by status
+  const enrollmentCounts = enrollments?.reduce((acc, enrollment) => {
+    acc[enrollment.status] = (acc[enrollment.status] || 0) + 1
+    return acc
+  }, {} as Record<string, number>) || {}
 
   return (
     <ProtectedRoute allowedRoles={["STUDENT"]}>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">My Enrollments</h1>
-            <p className="text-muted-foreground">Track your course enrollments and status</p>
+            <h1 className="text-3xl font-bold">My Enrollments</h1>
+            <p className="text-muted-foreground">
+              Your enrolled courses and enrollment requests
+            </p>
           </div>
           <Button asChild>
-            <a href="/student/courses">Browse More Courses</a>
+            <a href="/student/courses">Browse Courses</a>
           </Button>
         </div>
 
-        {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <StatsCard
-            title="Enrolled Courses"
-            value={approvedEnrollments.length}
-            description="Currently enrolled"
-            icon={BookOpen}
-          />
-          <StatsCard
-            title="Pending Approval"
-            value={pendingEnrollments.length}
-            description="Awaiting approval"
-            icon={Clock}
-          />
-          <StatsCard
-            title="Total Credits"
-            value={approvedEnrollments.reduce((sum, e) => {
-              const course = mockCourses.find((c) => c.id === e.courseId)
-              return sum + (course?.credits || 0)
-            }, 0)}
-            description="This semester"
-            icon={CheckCircle}
-          />
-          <StatsCard title="Rejected" value={rejectedEnrollments.length} description="This semester" icon={XCircle} />
-        </div>
-
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search your courses..." className="pl-10" />
-        </div>
-
-        {/* Enrollment Tabs */}
-        <Tabs defaultValue="enrolled" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="enrolled" className="flex items-center space-x-2">
-              <BookOpen className="h-4 w-4" />
-              <span>Enrolled ({approvedEnrollments.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="flex items-center space-x-2">
-              <Clock className="h-4 w-4" />
-              <span>Pending ({pendingEnrollments.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex items-center space-x-2">
-              <XCircle className="h-4 w-4" />
-              <span>Rejected ({rejectedEnrollments.length})</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="enrolled" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {approvedEnrollments.map((enrollment) => {
-                const { course } = getEnrollmentWithCourse(enrollment)
-                return course ? (
-                  <EnrollmentCard key={enrollment.id} enrollment={enrollment} course={course} onDrop={handleDrop} />
-                ) : null
-              })}
+        {/* Filter and Stats */}
+        {enrollments && enrollments.length > 0 && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <span>Total: {enrollments.length}</span>
+              {enrollmentCounts.ENROLLED && (
+                <span>Enrolled: {enrollmentCounts.ENROLLED}</span>
+              )}
+              {enrollmentCounts.PENDING && (
+                <span>Pending: {enrollmentCounts.PENDING}</span>
+              )}
+              {enrollmentCounts.COMPLETED && (
+                <span>Completed: {enrollmentCounts.COMPLETED}</span>
+              )}
             </div>
-            {approvedEnrollments.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No enrolled courses</h3>
-                <p className="text-muted-foreground mb-4">You haven't enrolled in any courses yet</p>
+            
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value === "all" ? "all" : value)}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Enrollments</SelectItem>
+                <SelectItem value="ENROLLED">Enrolled</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+                <SelectItem value="DROPPED">Dropped</SelectItem>
+                <SelectItem value="REJECTED">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mx-auto"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            </div>
+            <p className="mt-4">Loading enrollments...</p>
+          </div>
+        ) : filteredEnrollments && filteredEnrollments.length > 0 ? (
+          <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredEnrollments.map((enrollment) => (
+                <EnrollmentCard 
+                  key={enrollment.id} 
+                  enrollment={enrollment} 
+                  course={enrollment.course} 
+                  onDrop={() => handleDrop(enrollment.courseId)} 
+                />
+              ))}
+            </div>
+            
+            {statusFilter !== "all" && (
+              <div className="text-center text-sm text-muted-foreground">
+                Showing {filteredEnrollments.length} {statusFilter.toLowerCase()} enrollment{filteredEnrollments.length !== 1 ? 's' : ''}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-12">
+            <div className="space-y-4">
+              <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {statusFilter === "all" 
+                    ? "No enrollments found" 
+                    : `No ${statusFilter.toLowerCase()} enrollments`
+                  }
+                </h3>
+                <p className="text-muted-foreground">
+                  {statusFilter === "all" 
+                    ? "You haven't enrolled in any courses yet" 
+                    : `You don't have any ${statusFilter.toLowerCase()} enrollments`
+                  }
+                </p>
+              </div>
+              <div className="flex gap-2 justify-center">
+                {statusFilter !== "all" && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setStatusFilter("all")}
+                  >
+                    Show All Enrollments
+                  </Button>
+                )}
                 <Button asChild>
                   <a href="/student/courses">Browse Available Courses</a>
                 </Button>
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="pending" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {pendingEnrollments.map((enrollment) => {
-                const { course } = getEnrollmentWithCourse(enrollment)
-                return course ? <EnrollmentCard key={enrollment.id} enrollment={enrollment} course={course} /> : null
-              })}
             </div>
-            {pendingEnrollments.length === 0 && (
-              <div className="text-center py-12">
-                <Clock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No pending enrollments</h3>
-                <p className="text-muted-foreground">All your enrollment requests have been processed</p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="rejected" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {rejectedEnrollments.map((enrollment) => {
-                const { course } = getEnrollmentWithCourse(enrollment)
-                return course ? <EnrollmentCard key={enrollment.id} enrollment={enrollment} course={course} /> : null
-              })}
-            </div>
-            {rejectedEnrollments.length === 0 && (
-              <div className="text-center py-12">
-                <XCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No rejected enrollments</h3>
-                <p className="text-muted-foreground">None of your enrollment requests have been rejected</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   )
