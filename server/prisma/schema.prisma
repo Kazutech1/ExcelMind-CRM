@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  LECTURER
+  ADMIN
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ENROLLED
+  COMPLETED
+  DROPPED
+  REJECTED
+}
+
+enum AssignmentType {
+  FILE_UPLOAD
+  TEXT_SUBMISSION
+  BOTH
+}
+
+enum SubmissionStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  GRADED
+  LATE_SUBMISSION
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  coursesAsLecturer Course[]            @relation("CourseLecturer")
+  enrollments       Enrollment[]
+  assignmentsCreated Assignment[]       @relation("AssignmentCreator")
+  submissions       AssignmentSubmission[]
+  courseGrades      CourseGrade[]
+
+  @@map("users")
+}
+
+model Course {
+  id          String @id @default(uuid())
+  title       String
+  credits     Int
+  lecturerId  String
+  syllabus    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  lecturer      User         @relation("CourseLecturer", fields: [lecturerId], references: [id])
+  enrollments   Enrollment[]
+  assignments   Assignment[]
+  courseGrades  CourseGrade[]
+
+  @@map("courses")
+}
+
+model Enrollment {
+  id        String           @id @default(uuid())
+  courseId  String
+  studentId String
+  status    EnrollmentStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  course  Course @relation(fields: [courseId], references: [id])
+  student User   @relation(fields: [studentId], references: [id])
+
+  @@unique([courseId, studentId])
+  @@map("enrollments")
+}
+
+model Assignment {
+  id          String         @id @default(uuid())
+  title       String
+  description String?
+  type        AssignmentType
+  weight      Int            // Weight for grade calculation (0-100)
+  dueDate     DateTime
+  courseId    String
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  course      Course                 @relation(fields: [courseId], references: [id])
+  createdBy   User                   @relation("AssignmentCreator", fields: [createdById], references: [id])
+  submissions AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id              String           @id @default(uuid())
+  assignmentId    String
+  studentId       String
+  textSubmission  String?          // For text-based submissions
+  filePath        String?          // Path to uploaded file
+  fileName        String?          // Original filename
+  fileSize        Int?             // File size in bytes
+  mimeType        String?          // File MIME type
+  notes           String?          // Student notes
+  status          SubmissionStatus @default(NOT_SUBMITTED)
+  grade           Float?           // Grade out of 100
+  feedback        String?          // Lecturer feedback
+  submittedAt     DateTime?
+  gradedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  student    User       @relation(fields: [studentId], references: [id])
+
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
+}
+
+model CourseGrade {
+  id           String  @id @default(uuid())
+  courseId     String
+  studentId    String
+  finalGrade   Float?  // Calculated weighted average
+  letterGrade  String? // A, B, C, D, F
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  course  Course @relation(fields: [courseId], references: [id])
+  student User   @relation(fields: [studentId], references: [id])
+
+  @@unique([courseId, studentId])
+  @@map("course_grades")
+}
