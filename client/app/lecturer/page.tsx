@@ -1,10 +1,10 @@
 "use client"
 
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
+import { useCourses } from "@/hooks/useCourses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,39 +52,93 @@ const mockActivities = [
   },
 ]
 
+interface CreateCourseFormData {
+  title: string;
+  credits: number;
+  syllabus: string;
+}
+
 export default function LecturerDashboard() {
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [courseData, setCourseData] = useState({
+  const {
+    courses,
+    isLoading,
+    createCourse,
+    getLecturerCourses
+  } = useCourses();
+
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [syllabusFile, setSyllabusFile] = useState<File | null>(null);
+  const [createForm, setCreateForm] = useState<CreateCourseFormData>({
     title: "",
-    code: "",
-    description: "",
-    syllabus: null as File | null,
+    credits: 3,
+    syllabus: ""
   });
+
+  // Load lecturer's courses on component mount
+  useEffect(() => {
+    getLecturerCourses();
+  }, [getLecturerCourses]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setCourseData(prev => ({ ...prev, [name]: value }));
+    if (name === 'credits') {
+      setCreateForm(prev => ({ ...prev, [name]: parseInt(value) || 3 }));
+    } else {
+      setCreateForm(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCourseData(prev => ({ ...prev, syllabus: e.target.files![0] }));
+      setSyllabusFile(e.target.files[0]);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Here you would typically handle the course upload
-    console.log("Course data:", courseData);
-    // Reset form and close dialog
-    setCourseData({
-      title: "",
-      code: "",
-      description: "",
-      syllabus: null,
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsText(file);
     });
-    setIsUploadDialogOpen(false);
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      let syllabusContent = createForm.syllabus;
+      
+      // If a file was uploaded, read it as text
+      if (syllabusFile) {
+        syllabusContent = await readFileAsText(syllabusFile);
+      }
+
+      await createCourse({
+        title: createForm.title,
+        credits: createForm.credits,
+        syllabus: syllabusContent
+      });
+
+      // Reset form and close dialog
+      setCreateForm({
+        title: "",
+        credits: 3,
+        syllabus: ""
+      });
+      setSyllabusFile(null);
+      setIsCreateDialogOpen(false);
+      
+      // Refresh courses list
+      getLecturerCourses();
+    } catch (error) {
+      console.error("Error creating course:", error);
+    }
+  };
+
+  // Calculate dashboard stats from actual course data
+  const totalStudents = courses.reduce((sum, course) => sum + (course._count?.enrollments || 0), 0);
+  const totalAssignments = courses.reduce((sum, course) => sum + (course._count?.assignments || 0), 0);
 
   return (
     <ProtectedRoute allowedRoles={["LECTURER"]}>
@@ -96,18 +150,18 @@ export default function LecturerDashboard() {
             <p className="text-muted-foreground">Manage your courses and students</p>
           </div>
           <div className="flex space-x-2">
-            <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Course
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                   <DialogTitle>Create New Course</DialogTitle>
                   <DialogDescription>
-                    Fill in the details below to create a new course. Click save when you're done.
+                    Fill in the course details below. You can type the syllabus directly or upload a text file.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
@@ -119,53 +173,70 @@ export default function LecturerDashboard() {
                       <Input
                         id="title"
                         name="title"
-                        value={courseData.title}
+                        value={createForm.title}
                         onChange={handleInputChange}
                         className="col-span-3"
                         required
+                        placeholder="e.g., Introduction to Computer Science"
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="code" className="text-right">
-                        Code
+                      <Label htmlFor="credits" className="text-right">
+                        Credits
                       </Label>
                       <Input
-                        id="code"
-                        name="code"
-                        value={courseData.code}
+                        id="credits"
+                        name="credits"
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={createForm.credits}
                         onChange={handleInputChange}
                         className="col-span-3"
                         required
                       />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="description" className="text-right">
-                        Description
-                      </Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        value={courseData.description}
-                        onChange={handleInputChange}
-                        className="col-span-3"
-                        rows={3}
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="syllabus" className="text-right">
+                    <div className="grid grid-cols-4 items-start gap-4">
+                      <Label htmlFor="syllabus" className="text-right pt-2">
                         Syllabus
                       </Label>
-                      <Input
-                        id="syllabus"
-                        type="file"
-                        onChange={handleFileChange}
-                        className="col-span-3"
-                        accept=".pdf,.doc,.docx"
-                      />
+                      <div className="col-span-3 space-y-2">
+                        <Textarea
+                          id="syllabus"
+                          name="syllabus"
+                          value={createForm.syllabus}
+                          onChange={handleInputChange}
+                          rows={6}
+                          placeholder="Enter course syllabus content..."
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Or upload file:</span>
+                          <Input
+                            type="file"
+                            onChange={handleFileChange}
+                            accept=".txt,.md,.doc,.docx,.pdf"
+                            className="w-auto"
+                          />
+                        </div>
+                        {syllabusFile && (
+                          <p className="text-sm text-muted-foreground">
+                            Selected file: {syllabusFile.name}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="submit">Create Course</Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsCreateDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading ? "Creating..." : "Create Course"}
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -177,18 +248,27 @@ export default function LecturerDashboard() {
           </div>
         </div>
 
-        {/* Rest of the dashboard content remains the same */}
-        {/* Stats Grid */}
+        {/* Stats Grid - Now using real data */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatsCard title="My Courses" value="6" description="Active courses" icon={BookOpen} />
+          <StatsCard 
+            title="My Courses" 
+            value={courses.length.toString()} 
+            description="Active courses" 
+            icon={BookOpen} 
+          />
           <StatsCard
             title="Total Students"
-            value="156"
+            value={totalStudents.toString()}
             description="Across all courses"
             icon={Users}
             trend={{ value: 8, isPositive: true }}
           />
-          <StatsCard title="Pending Assignments" value="23" description="Need grading" icon={ClipboardList} />
+          <StatsCard 
+            title="Pending Assignments" 
+            value={totalAssignments.toString()} 
+            description="Need grading" 
+            icon={ClipboardList} 
+          />
           <StatsCard
             title="Average Grade"
             value="82%"
@@ -203,40 +283,44 @@ export default function LecturerDashboard() {
           {/* Recent Activity */}
           <RecentActivity activities={mockActivities} title="Student Activity" />
 
-          {/* My Courses */}
+          {/* My Courses - Now using real data */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">My Courses</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="font-medium text-foreground">Data Structures</p>
-                    <p className="text-sm text-muted-foreground">45 students • 8 assignments pending</p>
+                {isLoading ? (
+                  <div className="text-center text-muted-foreground py-4">
+                    Loading courses...
                   </div>
-                  <Button size="sm" variant="outline">
-                    Manage
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="font-medium text-foreground">Advanced Algorithms</p>
-                    <p className="text-sm text-muted-foreground">32 students • 5 assignments pending</p>
+                ) : courses.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-4">
+                    <p>No courses found.</p>
+                    <p className="text-sm">Create your first course to get started!</p>
                   </div>
-                  <Button size="sm" variant="outline">
-                    Manage
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="font-medium text-foreground">Computer Networks</p>
-                    <p className="text-sm text-muted-foreground">38 students • 10 assignments pending</p>
+                ) : (
+                  courses.slice(0, 3).map((course) => (
+                    <div key={course.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div>
+                        <p className="font-medium text-foreground">{course.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {course._count?.enrollments || 0} students • {course.credits} credits
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Manage
+                      </Button>
+                    </div>
+                  ))
+                )}
+                {courses.length > 3 && (
+                  <div className="text-center pt-2">
+                    <Button variant="link" size="sm">
+                      View All Courses ({courses.length})
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline">
-                    Manage
-                  </Button>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
