@@ -1,10 +1,10 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Users, BookOpen, Eye } from "lucide-react"
+import { useState, useEffect } from "react"
 
 interface Course {
   id: string
@@ -45,34 +45,53 @@ export function CourseCard({
   onView,
   onClick,
 }: CourseCardProps) {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const handleCardClick = () => {
-    if (onClick) {
+    if (onClick && isMounted) {
       onClick(course.id)
     }
   }
 
   const handleViewClick = (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent card click when button is clicked
-    if (onView) {
+    e.stopPropagation()
+    if (onView && isMounted) {
       onView(course.id)
     }
   }
 
   const handleEnrollClick = (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent card click when button is clicked
-    if (onEnroll) {
+    e.stopPropagation()
+    if (onEnroll && isMounted) {
       onEnroll(course.id)
     }
   }
 
   const handleManageClick = (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent card click when button is clicked
-    if (onManage) {
+    e.stopPropagation()
+    if (onManage && isMounted) {
       onManage(course.id)
     }
   }
 
-  return (
+  if (!isMounted) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">{course.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-foreground">Loading...</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+   return (
     <Card 
       className={`h-full transition-all duration-200 ${
         onClick ? 'cursor-pointer hover:shadow-md hover:border-primary/20' : ''

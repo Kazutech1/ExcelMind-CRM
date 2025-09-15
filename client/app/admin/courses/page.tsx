@@ -1,3 +1,6 @@
+"use client"
+
+
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { CourseCard } from "@/components/courses/course-card"
 import { Button } from "@/components/ui/button"

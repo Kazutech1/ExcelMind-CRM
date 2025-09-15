@@ -1,3 +1,5 @@
+"use client"
+
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { RecentActivity } from "@/components/dashboard/recent-activity"

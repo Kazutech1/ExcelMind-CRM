@@ -157,14 +157,13 @@ export default function StudentCoursesPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredCourses.map((course) => (
                 <CourseCard 
-                  key={course.id} 
-                  course={course} 
-                  showEnrollButton 
-                  showViewButton
-                  onEnroll={handleEnroll}
-                  onView={handleViewDetails}
-                  onClick={handleCardClick}
-                />
+                course={course} 
+                showEnrollButton
+                onEnroll={handleEnroll}
+                onView={handleViewDetails}
+                onClick={handleCardClick}
+              />
+
               ))}
             </div>
             

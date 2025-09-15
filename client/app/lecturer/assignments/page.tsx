@@ -71,7 +71,7 @@ export default function LecturerAssignmentsPage() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-q1 lg:grid-cols-1">
               {courses.map((course) => (
                 <Card 
                   key={course.id} 
